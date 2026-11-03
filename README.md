@@ -1,159 +1,228 @@
-# uArm-Swift-Pro-Kinematics-Simulation
 # Modélisation Cinématique et Simulation du uArm Swift Pro
 
-Ce dépôt documente l'analyse mathématique, la modélisation cinématique et la simulation du bras robotique 4-DDL **uArm Swift Pro**. 
+Ce dépôt documente l'analyse mathématique, la modélisation cinématique et la simulation du bras robotique 4-DDL **uArm Swift Pro**.
 
-**Objectifs du projet :**
-- Établir le modèle cinématique direct (MCD) à l'aide de la convention de Denavit-Hartenberg (D-H).
-- Détailler les calculs de la matrice de transformation homogène pour extraire la position spatiale de la pince.
-- Simuler le comportement du manipulateur et l'exécution du code (Python / CoppeliaSim).
+## Objectifs du projet
 
-**Architecture et Outils :**
-- **CoppeliaSim** : Modélisation de la scène et simulation physique.
-- **Python** : Implémentation des calculs matriciels et contrôle.
-- **Documentation uArm** : Paramétrage basé sur le guide développeur officiel (dimensions et limites articulaires).
+- Établir le **modèle géométrique direct (MGD)** à l'aide de la convention de Denavit-Hartenberg (D-H).
+- Détailler le calcul des matrices de transformation homogène pour extraire la position spatiale de la pince.
+- Simuler le comportement du manipulateur (Python / CoppeliaSim).
 
-# Modélisation Cinématique et Simulation du uArm Swift Pro
+## Architecture et outils
 
-Ce projet détaille l'analyse cinématique, la modélisation mathématique et la simulation du bras manipulateur uArm Swift Pro (4 degrés de liberté). 
+| Outil | Rôle |
+| :--- | :--- |
+| **CoppeliaSim** | Modélisation de la scène et simulation physique |
+| **Python** | Implémentation des calculs matriciels et contrôle |
+| **Documentation uArm** | Paramétrage basé sur le guide développeur officiel (dimensions et limites articulaires) |
 
-## 1. Arborescence et Étapes du Projet
+## Structure du dépôt
 
-Voici les étapes méthodologiques suivies pour la réalisation de ce projet :
-1. **Analyse cinématique** : Étude de la structure du robot.
-2. **Définition des repères** : Placement des repères cartésiens pour les 4 degrés de liberté (DDL).
-3. **Tableau de Denavit-Hartenberg (D-H)** : Extraction des paramètres géométriques.
-4. **Calcul du MGD** : Établissement du Modèle Géométrique Direct via les matrices homogènes.
-5. **Simulation** : Interfaçage entre Python et CoppeliaSim.
+```text
+uArm-Swift-Pro-Kinematics-Simulation/
+├── README.md
+├── requirements.txt
+├── Docs/
+│   ├── CALCULS.md          (détail des calculs matriciels)
+│   ├── INTERFACAGE.md   (liaison VS Code ↔ CoppeliaSim)
+|   ├── uArm swift pro dev guide ( guide officiel détaillé du robot )
+|   ├── Reperes uarm ( details sur le choix des reperes de chacune des articulations )
+|   └── mechanisme du pivot ( explication mecanique du pivot qui controle le bras ) 
+└── src/
+    ├── mgd.py              (calcul du MGD)
+    └── test_connexion.py   (test de liaison avec CoppeliaSim)
+```
 
-## 2. Analyse Cinématique et Paramètres D-H
+---
 
-Pour établir le modèle cinématique, nous utilisons les 4 paramètres de Denavit-Hartenberg pour passer du repère i-1 au repère i :
-* theta_i : Rotation autour de l'axe Z. Sur le uArm, c'est la variable articulaire (l'angle du moteur qui varie quand le bras bouge, correspondant à la commande moteur). C'est l'angle dont le moteur tourne autour de son axe Z pour que son axe X pointe vers la prochaine articulation.
-* d_i : Translation le long de l'axe Z. C'est la distance à glisser le long de l'axe Z pour arriver à la hauteur du prochain moteur.
-* a_i : Translation le long de l'axe X. C'est la longueur physique du bras à parcourir le long de l'axe X pour atteindre le nouveau repère.
-* alpha_i : Rotation autour de l'axe X. C'est l'angle de torsion du poignet autour de ce bras pour que l'ancien axe Z s'aligne sur le nouvel axe Z.
+## 1. Étapes du projet
 
-### Limites des moteurs et Choix des Angles
-Selon le document "uArm Swift Pro_Developer Guide v1.0.6.pdf", les limites de rotation des moteurs sont les suivantes :
-* **Base** : 0° to 180° (Choix justifié par la protection du câblage interne).
-* **Épaule** : 0° to 130° (Pour éviter que les tiges tapent contre le châssis ou elles-mêmes, éviter le verrouillage mécanique, et assurer l'équilibre et la stabilité du bras).
-* **Coude** : 0° to 106° (Mêmes raisons que pour l'épaule).
-* **Pince** : 0° to 180° (Limite technologique du servomoteur).
+1. **Analyse cinématique** : étude de la structure du robot.
+2. **Définition des repères** : placement des repères cartésiens pour les 4 degrés de liberté (DDL).
+3. **Tableau de Denavit-Hartenberg (D-H)** : extraction des paramètres géométriques.
+4. **Calcul du MGD** : établissement du modèle géométrique direct via les matrices homogènes.
+5. **Simulation** : interfaçage entre Python et CoppeliaSim.
 
-*(Note : Dans le code, ces limites peuvent être gérées avec des angles symétriques, par exemple de -90° à +90° au lieu de 0° à 180°.*
+---
 
-## 3. Placement des Repères et Tableau D-H
+## 2. Analyse cinématique et paramètres D-H
 
-| Articulation i | theta_i (Rot Z) | d_i (Trans Z) | a_i (Trans X) | alpha_i (Rot X) |
-| :--- | :--- | :--- | :--- | :--- |
-| **1 (Base - Épaule)** | theta_1 | d_1 (hauteur socle) | 0 | pi/2 |
-| **2 (Épaule - Coude)** | theta_2 | 0 | a_2 (long. bras) | 0 |
-| **3 (Coude - Poignet)** | theta_3 | 0 | a_3 (avant-bras) | -\pi/2 |
-| **4 (Poignet - Pince)** | theta_4 | d_4 (hauteur pince) | 0 | 0 |
+Pour passer du repère $i-1$ au repère $i$, on utilise 4 paramètres de Denavit-Hartenberg :
 
-## 4. Matrices de Transformation Homogène et MGD
+| Paramètre | Mouvement | Signification |
+| :---: | :--- | :--- |
+| $\theta_i$ | Rotation autour de $Z$ | Variable articulaire : angle du moteur (commande moteur). Il fait tourner le bras pour que l'axe $X$ pointe vers la prochaine articulation. |
+| $d_i$ | Translation le long de $Z$ | Distance à parcourir le long de l'axe $Z$ pour arriver à la hauteur du prochain moteur. |
+| $a_i$ | Translation le long de $X$ | Longueur physique du bras à parcourir le long de l'axe $X$ pour atteindre le nouveau repère. |
+| $\alpha_i$ | Rotation autour de $X$ | Angle de torsion pour que l'ancien axe $Z$ s'aligne sur le nouvel axe $Z$. |
 
-La matrice de transformation homogène permet à l'ordinateur de calculer simultanément la position et l'orientation d'une articulation par rapport à la précédente. La formule de composition est :
-$$\text{Repère}_{i} = Rot_z(\theta) \times Trans_z(d) \times Trans_x(a) \times Rot_x(\alpha)$$
+### Limites des moteurs et choix des angles
 
-**Formule universelle de D-H :**
+Selon le document *uArm Swift Pro_Developer Guide v1.0.6.pdf*, les limites de rotation sont :
+
+| Articulation | Plage | Justification |
+| :--- | :---: | :--- |
+| **Base** | 0° à 180° | Protection du câblage interne |
+| **Épaule** | 0° à 130° | Éviter que les tiges ne tapent contre le châssis ou entre elles, éviter le verrouillage mécanique, assurer l'équilibre et la stabilité du bras |
+| **Coude** | 0° à 106° | Mêmes raisons que pour l'épaule |
+| **Pince** | 0° à 180° | Limite technologique du servomoteur |
+
+> **Note :** dans le code, ces limites peuvent être gérées avec des angles symétriques, par exemple de -90° à +90° au lieu de 0° à 180°.
+
+---
+
+## 3. Placement des repères et tableau D-H
+
+| Articulation $i$ | $\theta_i$ (Rot Z) | $d_i$ (Trans Z) | $a_i$ (Trans X) | $\alpha_i$ (Rot X) |
+| :--- | :---: | :---: | :---: | :---: |
+| **1** (Base → Épaule) | $\theta_1$ | $d_1$ (hauteur socle) | $0$ | $\pi/2$ |
+| **2** (Épaule → Coude) | $\theta_2$ | $0$ | $a_2$ (longueur bras) | $0$ |
+| **3** (Coude → Poignet) | $\theta_3$ | $0$ | $a_3$ (avant-bras) | $-\pi/2$ |
+| **4** (Poignet → Pince) | $\theta_4$ | $d_4$ (hauteur pince) | $0$ | $0$ |
+
+Valeurs numériques utilisées (en mm) : $d_1 = 136.6$, $a_2 = 142.07$, $a_3 = 158.8$, $d_4 = 0$ (mettre $38$ pour inclure la pince).
+
+---
+
+## 4. Matrices de transformation homogène et MGD
+
+La matrice de transformation homogène permet de calculer simultanément la position et l'orientation d'une articulation par rapport à la précédente :
+
 $$
-T_{i}^{i-1} = \begin{bmatrix} 
-\cos\theta_i & -\sin\theta_i\cos\alpha_i & \sin\theta_i\sin\alpha_i & a_i\cos\theta_i \\ 
-\sin\theta_i & \cos\theta_i\cos\alpha_i & -\cos\theta_i\sin\alpha_i & a_i\sin\theta_i \\ 
-0 & \sin\alpha_i & \cos\alpha_i & d_i \\ 
-0 & 0 & 0 & 1 
+T_{i-1}^{\,i} = Rot_z(\theta_i) \times Trans_z(d_i) \times Trans_x(a_i) \times Rot_x(\alpha_i)
+$$
+
+### Formule universelle de D-H
+
+$$
+T_{i-1}^{\,i} =
+\begin{bmatrix}
+\cos\theta_i & -\sin\theta_i\cos\alpha_i & \sin\theta_i\sin\alpha_i & a_i\cos\theta_i \\
+\sin\theta_i & \cos\theta_i\cos\alpha_i & -\cos\theta_i\sin\alpha_i & a_i\sin\theta_i \\
+0 & \sin\alpha_i & \cos\alpha_i & d_i \\
+0 & 0 & 0 & 1
 \end{bmatrix}
 $$
 
-### Calcul des Matrices intermédiaires
+### Matrices intermédiaires
 
-- **Base $\to$ Épaule ($T_{01}$)** :
+**Base → Épaule ($T_{01}$)**, avec $\alpha_1 = \pi/2$ :
+
 $$
-T_{01} = \begin{bmatrix} 
-\cos\theta_1 & 0 & \sin\theta_1 & 0 \\ 
-\sin\theta_1 & 0 & -\cos\theta_1 & 0 \\ 
-0 & 1 & 0 & d_1 \\ 
-0 & 0 & 0 & 1 
+T_{01} =
+\begin{bmatrix}
+\cos\theta_1 & 0 & \sin\theta_1 & 0 \\
+\sin\theta_1 & 0 & -\cos\theta_1 & 0 \\
+0 & 1 & 0 & d_1 \\
+0 & 0 & 0 & 1
 \end{bmatrix}
 $$
 
-- **Épaule $\to$ Coude ($T_{12}$)** :
+**Épaule → Coude ($T_{12}$)**, avec $\alpha_2 = 0$ :
+
 $$
-T_{12} = \begin{bmatrix} 
-\cos\theta_2 & -\sin\theta_2 & 0 & a_2\cos\theta_2 \\ 
-\sin\theta_2 & \cos\theta_2 & 0 & a_2\sin\theta_2 \\ 
-0 & 0 & 1 & 0 \\ 
-0 & 0 & 0 & 1 
+T_{12} =
+\begin{bmatrix}
+\cos\theta_2 & -\sin\theta_2 & 0 & a_2\cos\theta_2 \\
+\sin\theta_2 & \cos\theta_2 & 0 & a_2\sin\theta_2 \\
+0 & 0 & 1 & 0 \\
+0 & 0 & 0 & 1
 \end{bmatrix}
 $$
 
-- **Coude $\to$ Poignet ($T_{23}$)** :
+**Coude → Poignet ($T_{23}$)**, avec $\alpha_3 = -\pi/2$ :
+
 $$
-T_{23} = \begin{bmatrix} 
-\cos\theta_3 & 0 & -\sin\theta_3 & a_3\cos\theta_3 \\ 
-\sin\theta_3 & 0 & \cos\theta_3 & a_3\sin\theta_3 \\ 
-0 & -1 & 0 & 0 \\ 
-0 & 0 & 0 & 1 
+T_{23} =
+\begin{bmatrix}
+\cos\theta_3 & 0 & -\sin\theta_3 & a_3\cos\theta_3 \\
+\sin\theta_3 & 0 & \cos\theta_3 & a_3\sin\theta_3 \\
+0 & -1 & 0 & 0 \\
+0 & 0 & 0 & 1
 \end{bmatrix}
 $$
 
-- **Poignet $\to$ Pince ($T_{34}$)** :
+**Poignet → Pince ($T_{34}$)**, avec $\alpha_4 = 0$ :
+
 $$
-T_{34} = \begin{bmatrix} 
-\cos\theta_4 & -\sin\theta_4 & 0 & 0 \\ 
-\sin\theta_4 & \cos\theta_4 & 0 & 0 \\ 
-0 & 0 & 1 & d_4 \\ 
-0 & 0 & 0 & 1 
+T_{34} =
+\begin{bmatrix}
+\cos\theta_4 & -\sin\theta_4 & 0 & 0 \\
+\sin\theta_4 & \cos\theta_4 & 0 & 0 \\
+0 & 0 & 1 & d_4 \\
+0 & 0 & 0 & 1
 \end{bmatrix}
 $$
 
-**Équation finale du MGD :**
-$$T_{04} = T_{01} \times T_{12} \times T_{23} \times T_{34}$$
+### Équation finale du MGD
 
-### Comment lire la Matrice Finale ?
-Le produit de ces matrices génère une matrice 4x4. Elle est purement mathématique et se lit ainsi :
-- **Le bloc 3x3 en haut à gauche** : Représente la matrice de rotation (l'orientation de la pince dans l'espace).
-- **La 4ème colonne (les 3 premières lignes)** : Représente le vecteur de translation $(X, Y, Z)$, c'est-à-dire la position exacte de la pince par rapport à la base.
+$$
+T_{04} = T_{01} \times T_{12} \times T_{23} \times T_{34}
+$$
 
-## 5. Interfaçage et Communication : Python & CoppeliaSim
+### Comment lire la matrice finale ?
 
-Pour lier le Modèle Géométrique Direct à la simulation 3D, nous utilisons un script Python communiquant avec CoppeliaSim via la **ZeroMQ Remote API**. Cela permet de lire les positions actuelles des moteurs dans la simulation et d'envoyer les résultats matriciels.
+$$
+T_{04} =
+\begin{bmatrix}
+R_{3\times3} & P_{3\times1} \\
+0\;\,0\;\,0 & 1
+\end{bmatrix}
+$$
 
-**Extrait du code Python (Calcul du MGD au repos) :**
+- **Le bloc $R$ (3×3, en haut à gauche)** : matrice de rotation, c'est-à-dire l'orientation de la pince dans l'espace.
+- **La 4ᵉ colonne $P = (X, Y, Z)^T$** : vecteur de translation, c'est-à-dire la position exacte de la pince par rapport à la base.
 
-```python
-import numpy as np
-from math import cos, sin, radians
+Le détail pas à pas du produit matriciel est dans [docs/CALCULS.md](docs/CALCULS.md).
 
-def D_H(theta, d, a, alpha):
-    theta = radians(theta)
-    alpha = radians(alpha)
-    matrice_D_H = np.array([
-        [cos(theta), -sin(theta)*cos(alpha), sin(theta)*sin(alpha), a*cos(theta)],
-        [sin(theta),  cos(theta)*cos(alpha), -cos(theta)*sin(alpha), a*sin(theta)],
-        [0,          sin(alpha),            cos(alpha),            d],
-        [0,          0,                     0,                     1]
-    ])
-    return matrice_D_H
+---
 
-def MGD(theta1, theta2, theta3, theta4):
-    d1 = 136.6  # Hauteur ajustée
-    a2 = 142.07
-    a3 = 158.8
-    d4 = 38.0
+## 5. Interfaçage Python & CoppeliaSim
 
-    T01 = D_H(theta1, d1, 0, 90)
-    T12 = D_H(theta2, 0, a2, 0)
-    T23 = D_H(theta3, 0, a3, -90)
-    T34 = D_H(theta4, d4, 0, 0)
+Un script Python communique avec CoppeliaSim via la **ZeroMQ Remote API**. Il lit la position des moteurs dans la simulation, les commande, et permet de comparer avec le MGD calculé.
 
-    matrice_homogene = T01 @ T12 @ T23 @ T34
-    position_pince = matrice_homogene[0:3, 3]
-    return np.round(matrice_homogene, 2), np.round(position_pince, 2)
+Installation rapide :
 
-matrice_finale, position = MGD(0, 0, 0, 0)
+```bash
+pip install -r requirements.txt
+```
 
-print("Matrice finale :\n", matrice_finale)
-print("Position de la pince :\n", position)
+Le guide complet (liaison VS Code ↔ CoppeliaSim, test de connexion, commande des moteurs, dépannage) est dans [docs/INTERFACAGE.md](docs/INTERFACAGE.md).
+
+### Code Python : calcul du MGD
+
+Le code complet se trouve dans [src/mgd.py](src/mgd.py).
+
+### Résultat obtenu (position de repos, tous les angles à 0°)
+
+Sortie de l'exécution dans VS Code :
+
+```text
+Matrice finale :
+ [[  1.     0.     0.   300.87]
+ [  0.     1.     0.     0.  ]
+ [  0.     0.     1.   136.6 ]
+ [  0.     0.     0.     1.  ]]
+Position de la pince :
+ [300.87   0.   136.6 ]
+```
+
+$$
+T_{04} =
+\begin{bmatrix}
+1 & 0 & 0 & 300.87 \\
+0 & 1 & 0 & 0 \\
+0 & 0 & 1 & 136.6 \\
+0 & 0 & 0 & 1
+\end{bmatrix}
+$$
+
+La rotation est l'identité (tous les angles sont nuls) et la position vaut :
+
+$$
+P = \begin{bmatrix} a_2 + a_3 \\ 0 \\ d_1 \end{bmatrix}
+= \begin{bmatrix} 142.07 + 158.8 \\ 0 \\ 136.6 \end{bmatrix}
+= \begin{bmatrix} 300.87 \\ 0 \\ 136.6 \end{bmatrix} \text{ mm}
+$$
+
+Ici $d_4 = 0$ : la position correspond à l'extrémité du poignet. Avec $d_4 = 38$ mm, on aurait $Z = d_1 + d_4 = 174.6$ mm.
