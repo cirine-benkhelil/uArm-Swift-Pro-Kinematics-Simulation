@@ -187,11 +187,11 @@ Installation rapide :
 pip install -r requirements.txt
 ```
 
-Le guide complet (liaison VS Code ↔ CoppeliaSim, test de connexion, commande des moteurs, dépannage) est dans [docs/INTERFACAGE.md](docs/INTERFACAGE.md).
+Le guide complet (liaison VS Code ↔ CoppeliaSim, test de connexion, commande des moteurs, dépannage) est dans [Docs/INTERFACAGE.md](Docs/INTERFACAGE.md).
 
 ### Code Python : calcul du MGD
 
-Le code complet se trouve dans [src/mgd.py](src/mgd.py).
+Le code complet se trouve dans [Src/MGD.py](Src/MGD.py).
 
 ### Résultat obtenu (position de repos, tous les angles à 0°)
 
