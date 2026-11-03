@@ -173,7 +173,7 @@ $$
 - **Le bloc $R$ (3×3, en haut à gauche)** : matrice de rotation, c'est-à-dire l'orientation de la pince dans l'espace.
 - **La 4ᵉ colonne $P = (X, Y, Z)^T$** : vecteur de translation, c'est-à-dire la position exacte de la pince par rapport à la base.
 
-Le détail pas à pas du produit matriciel est dans [docs/CALCULS.md](docs/CALCULS.md).
+Le détail pas à pas du produit matriciel est dans [Docs/CALCULS.md](Docs/CALCULS.md).
 
 ---
 
